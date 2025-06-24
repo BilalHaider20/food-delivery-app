@@ -1,4 +1,4 @@
-import { DeliveryPartner } from "./user";
+import mongoose from "mongoose";
 
 const branchSchema = new mongoose.Schema({
     name:{
@@ -13,7 +13,7 @@ const branchSchema = new mongoose.Schema({
     DeliveryPartner:[
         {
             type:mongoose.Schema.Types.ObjectId,
-            ref: "DEliveryPartner"
+            ref: "DeliveryPartner"
         }
     ],
 });
