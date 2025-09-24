@@ -65,7 +65,7 @@ const DeliveryPartnerSchema = new mongoose.Schema({
 
 //admin Schema
 const adminSchema = new mongoose.Schema({
-    ...userSchema,
+    ...userSchema.obj,
     email:{type:String, unique: true, required: true},
     password:{type: String, required: true},
     role: { type: String, enum: ["Admin"], default: "Admin"}

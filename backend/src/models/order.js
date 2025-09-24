@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import Counter from "./counter";
+import Counter from "./counter.js";
 
-const orderSchema = new Mongoose.Schema({
+const orderSchema = new mongoose.Schema({
     orderId:{
         type: String,
         required: true,

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { Customer, DeliveryPartner } from '../../models';
+import { Customer, DeliveryPartner } from '../../models/index.js';
 
 
 export const generateToken = (user) => {
