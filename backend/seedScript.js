@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { categories, products } from "./seedData";
-import {Product, Category} from ".src/models/index.js"
+import { categories, products } from "./seedData.js";
+import {Product, Category} from "./src/models/index.js";
+import "dotenv/config";
 
 async function seedDatabase(){
     try{
@@ -33,3 +34,5 @@ async function seedDatabase(){
         mongoose.connection.close();
     }
 }
+
+seedDatabase();
