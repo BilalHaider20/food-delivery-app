@@ -1,35 +1,53 @@
 import "dotenv/config";
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import cors from "cors";
 import { connectDB } from "./src/config/connect.js";
-import fastify from "fastify";
 import { PORT } from "./src/config/config.js";
-import fastifySocketIO from "fastify-socket"
 import { registerRoutes } from "./src/routes/index.js";
 
+
+
 const start = async () => {
-  await connectDB(process.env.MONGO_URI);
+  try {
 
-  const app = fastify();
-  app.register(fastifySocketIO, {
-    cors: {
-      origin: "*"
-    },
-    pingInterval: 10000,
-    pingTimeout: 5000,
-    transports: ['websocket']
-  })
+    // connect to database
+    await connectDB(process.env.MONGO_URI);
 
-  await registerRoutes(app);
+    const app = express();
 
-  app.listen({ port: PORT, host: '0.0.0.0' }, (err, addr) => {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log(`Grocery App running on http://localhost:${PORT}`)
-    }
-  });
+    // ✅  we need createServer - for Socket.IO
+    const server = createServer(app);  // Express app wrapped in HTTP server
 
-  app.ready().then(() => {
-    app.io.on("connection", (socket) => {
+    // ✅ Socket.IO needs the HTTP server, not the Express app
+    const webSocket = new Server(server, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      },
+      pingInterval: 10000,
+      pingTimeout: 5000,
+      transports: ['websocket']
+    });
+
+    // make websocket available to routes
+    app.use((req, res, next) => {
+      req.io = webSocket;
+      next();
+    })
+
+    //middleware 
+    app.use(cors());
+    app.use(express.json());
+
+
+    // Routes
+    registerRoutes(app);
+
+
+    // Socket.IO
+    webSocket.on('connection', (socket) => {
       console.log("user connected", socket.id);
 
       socket.on("joinRoom", (orderId) => {
@@ -37,13 +55,26 @@ const start = async () => {
         console.log(`user joined room ${orderId}`);
       });
 
-
       socket.on("disconnect", () => {
         console.log("user disconnected", socket.id);
       });
     });
-  });
 
+
+
+    // ✅ Listen on server (not app) because Socket.IO is attached to server
+    server.listen(PORT, '0.0.0.0', (err) => {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log(`🚀 Food Delivery App running on http://localhost:${PORT}`);
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
-  start();
+start();

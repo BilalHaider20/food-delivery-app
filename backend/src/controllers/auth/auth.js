@@ -18,7 +18,7 @@ export const generateToken = (user) => {
     return { accessToken, refreshToken };
 }
 
-export const loginCustomer = async (req, reply) => {
+export const loginCustomer = async (req, res) => {
     try {
         const { phone } = req.body;
         let customer = await Customer.findOne({ phone });
@@ -27,14 +27,14 @@ export const loginCustomer = async (req, reply) => {
             customer = new Customer({
                 phone,
                 role: 'Customer',
-                isActive: true
+                isActivated: true
             })
             await customer.save();
         }
 
         const { accessToken, refreshToken } = generateToken(customer);
 
-        return reply.status(200), send({
+        return res.status(200).json({
             message: 'Login successful',
             accessToken,
             refreshToken,
@@ -43,29 +43,29 @@ export const loginCustomer = async (req, reply) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        return reply.status(500).send({ message: 'Login Error', error });
+        return res.status(500).json({ message: 'Login Error', error });
 
     }
 }
 
 
-export const loginDeliveryPartner = async (req, reply) => {
+export const loginDeliveryPartner = async (req, res) => {
     try {
         const { email, password } = req.body;
         let deliveryPartner = await DeliveryPartner.findOne({ email });
 
         if (!deliveryPartner) {
-            return reply.status(404).send({ message: 'Delivery Partner not found' });
+            return res.status(404).json({ message: 'Delivery Partner not found' });
         }
 
         const isMatch = password === deliveryPartner?.password
         if (!isMatch) {
-            return reply.status(401).send({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const { accessToken, refreshToken } = generateToken(deliveryPartner);
 
-        return reply.status(200), send({
+        return res.status(200).json({
             message: 'Login successful',
             accessToken,
             refreshToken,
@@ -74,73 +74,75 @@ export const loginDeliveryPartner = async (req, reply) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        return reply.status(500).send({ message: 'Internal Server Error', error });
+        return res.status(500).json({ message: 'Internal Server Error', error });
 
     }
 }
 
 
-export const refreshToken = async (req, reply) => {
+export const refreshToken = async (req, res) => {
     try {
         const { refreshToken } = req.body;
 
         if (!refreshToken) {
-            return reply.status(401).send({ message: 'Refresh token is required' });
+            return res.status(401).json({ message: 'Refresh token is required' });
         }
 
-        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
+        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, decoded) => {
             if (err) {
-                return reply.status(403).send({ message: 'Invalid refresh token', error: err });
+                return res.status(403).json({ message: 'Invalid refresh token', error: err });
             }
 
             let user;
-            if(decoded.role === 'Customer') {
-                user = Customer.findById(decoded.userId);
-            }else if(decoded.role === 'DeliveryPartner') {
-                user = DeliveryPartner.findById(decoded.userId);
-            }else{
-                return reply.status(403).send({ message: 'Invalid Role' });
+            if (decoded.role === 'Customer') {
+                user = await Customer.findById(decoded.userId);
+            } else if (decoded.role === 'DeliveryPartner') {
+                user = await DeliveryPartner.findById(decoded.userId);
+            } else {
+                return res.status(403).json({ message: 'Invalid Role' });
             }
             if (!user) {
-                return reply.status(404).send({ message: 'User not found' });
+                return res.status(404).json({ message: 'User not found' });
             }
 
-            const {accessToken: newAccessToken, refreshToken: newRefreshToken} = generateToken(user);
+            const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateToken(user);
 
-            return reply.status(200).send({ message: "Token Refreshed "
-                , accessToken: newAccessToken, refreshToken: newRefreshToken });
+            return res.status(200).json({
+                message: "Token Refreshed "
+                , accessToken: newAccessToken, refreshToken: newRefreshToken
+            });
         });
 
     } catch (error) {
         console.error('Refresh token error:', error);
-        return reply.status(500).send({ message: 'Internal Server Error', error });
+        return res.status(500).json({ message: 'Internal Server Error', error });
     }
 }
 
 
-export const fetchUser = async(req, reply)=>{
-    const {userId, role} = req.user;
+export const fetchUser = async (req, res) => {
+    const { userId, role } = req.user;
 
     try {
         let user;
-        if(role === "Customer"){
+        if (role === "Customer") {
             user = await Customer.findById(userId);
-        }else if(role === "DeliveryPartner"){
+        } else if (role === "DeliveryPartner") {
             user = await DeliveryPartner.findById(userId);
-        }else {
-            return reply.status(403).send({ message: 'Invalid Role' });
+        } else {
+            return res.status(403).json({ message: 'Invalid Role' });
         }
 
-        if(!user) {
-            return reply.status(404).send({ message: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        return reply.status(200).send({
+        return res.status(200).json({
             message: 'User fetched successfully',
             user
         });
     } catch (error) {
         console.error('Fetch user error:', error);
-        return reply.status(500).send({ message: 'Internal Server Error' });
+        return res.status(500).json({ message: 'Internal Server Error' });
     }
 }

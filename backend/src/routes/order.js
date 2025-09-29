@@ -1,19 +1,22 @@
-import fastify from "fastify";
+import express from "express"
 import { confirmOrder, createOrder, getOrderById, getOrders, updateOrderStatus } from "../controllers/order/order.js";
 import { verifyToken } from "../middleware/auth.js";
 
-export const orderRoutes = async (fastify, options)=>{
-    fastify.addHook("preHandler", async (req, res)=>{
-        const isAuthenticated = await verifyToken(req, res);
-        if(!isAuthenticated){
-            return res.status(401).send({message:"Unauthorized"});
-        }
-    });
+const router = express.Router();
 
+//create order --> POST /api/orders
+router.post('/', verifyToken, createOrder);
 
-    fastify.get("/order/:orderId",getOrderById);
-    fastify.get("order", getOrders );
-    fastify.post("/order", createOrder);
-    fastify.post("/order/:orderId/confirm", confirmOrder);
-    fastify.patch("/order/:orderId/status", updateOrderStatus);
-}
+//confirm order --> PATCH /api/orders/:orderId/confirm
+router.post('/:orderId/confirm', verifyToken, confirmOrder);
+
+//update order status --> PATCH /api/orders/:orderId/status
+router.patch('/:orderId/status', verifyToken, updateOrderStatus);
+
+// GET /api/orders
+router.get('/', verifyToken, getOrders);
+
+// GET /api/orders/:orderId
+router.get('/:orderId', verifyToken, getOrderById);
+
+export default router;

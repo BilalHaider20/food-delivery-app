@@ -1,12 +1,22 @@
+import express from "express";
 import { fetchUser, loginCustomer, loginDeliveryPartner, refreshToken } from "../controllers/auth/auth.js"
 import { updateUser } from "../controllers/tracking/user.js";
 import { verifyToken } from "../middleware/auth.js";
 
-export const authRoutes = async (fastify, options) => {
+const router = express.Router();
 
-    fastify.post("/customer/login", loginCustomer);
-    fastify.post("/delivery/login", loginDeliveryPartner);
-    fastify.post("/refresh-token", refreshToken);
-    fastify.get("/user", { preHandler: [verifyToken] }, fetchUser);
-    fastify.patch("/user", { preHandler: [verifyToken] }, updateUser);
-}
+// POST /api/auth/customer
+router.post('/customer', loginCustomer);
+
+// POST /api/auth/delivery  
+router.post('/delivery', loginDeliveryPartner);
+
+// POST /api/auth/refresh-token
+router.post('/refresh-token', refreshToken);
+
+// GET /api/auth/user
+router.get('/user', verifyToken, fetchUser);
+
+router.patch('/user', verifyToken, updateUser);
+
+export default router;

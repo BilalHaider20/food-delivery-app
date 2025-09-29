@@ -2,7 +2,7 @@ import { Branch, Customer, DeliveryPartner, Order } from "../../models/index.js"
 
 
 // item.item
-export const createOrder = async (req, response) => {
+export const createOrder = async (req, res) => {
     try {
         const { userId } = req.user;
         const { items, branch, totalPrice } = req.body;
@@ -10,16 +10,16 @@ export const createOrder = async (req, response) => {
         const customerData = await Customer.findById(userId);
 
         if (!customerData) {
-            return response.status(404).send({ message: 'Customer not found' });
+            return res.status(404).json({ message: 'Customer not found' });
         }
         const branchData = await Branch.findById(branch);
 
         if (!branchData) {
-            return response.status(404).send({ message: 'Branch not found' });
+            return res.status(404).json({ message: 'Branch not found' });
         }
 
         const newOrder = new Order({
-            customer: customerData,
+            customerId: userId,
             branch,
             totalPrice,
             items: items.map(item => ({
@@ -41,11 +41,11 @@ export const createOrder = async (req, response) => {
         });
 
         const savedOrder = await newOrder.save();
-        return response.status(201).send(savedOrder);
+        return res.status(201).json(savedOrder);
 
     } catch (error) {
         console.log('error', error);
-        return response.status(500).send({ message: 'Failed to create order', error: error.message });
+        return res.status(500).json({ message: 'Failed to create order', error: error.message });
     }
 }
 
@@ -59,17 +59,17 @@ export const confirmOrder = async (req, res) => {
         const deliveryPerson = await DeliveryPartner.findById(userId);
 
         if (!deliveryPerson) {
-            return res.status(404).send({ message: "Delivery Person not found" });
+            return res.status(404).json({ message: "Delivery Person not found" });
 
         }
 
         const order = await Order.findById(orderId);
         if (!order) {
-            return res.status(404).send({ message: "Order not found" });
+            return res.status(404).json({ message: "Order not found" });
         }
 
         if (order.status != 'available') {
-            return res.status(404).send({ message: "Order is not available" });
+            return res.status(404).json({ message: "Order is not available" });
         }
 
         order.status = "confirmed";
@@ -80,14 +80,14 @@ export const confirmOrder = async (req, res) => {
             address: deliveryPersonLocation?.address || "",
         }
 
-        req.server.io.to(orderId).emit('orderConfirmed', order);
+        req.io.to(orderId).emit('orderConfirmed', order);
         await order.save();
 
-        return res.status(202).send(order);
+        return res.status(202).json(order);
 
 
     } catch (error) {
-        return res.status(500).send({ message: "Failed to confirm order", error });
+        return res.status(500).json({ message: "Failed to confirm order", error });
     }
 }
 
@@ -101,34 +101,34 @@ export const updateOrderStatus = async (req, res) => {
         const deliveryPerson = await DeliveryPartner.findById(userId);
 
         if (!deliveryPerson) {
-            return res.status(404).send({ message: "Delivery Person not found" });
+            return res.status(404).json({ message: "Delivery Person not found" });
 
         }
 
         const order = await Order.findById(orderId);
         if (!order) {
-            return res.status(404).send({ message: "Order not found" });
+            return res.status(404).json({ message: "Order not found" });
         }
 
         if (['delivered', 'cancelled'].includes(order.status)) {
-            return res.status(400).send({ message: "Order is already completed or cancelled" });
+            return res.status(400).json({ message: "Order is already completed or cancelled" });
         }
 
         if (order.deliveryPartner.toString() != userId) {
-            return res.status(403).send({ message: 'unauthorized' });
+            return res.status(403).json({ message: 'unauthorized' });
         }
 
         order.status = status;
         order.deliveryPersonLocation = deliveryPersonLocation;
         await order.save();
 
-        req.server.io.to(orderId).emit("liveTrackingUpdate", order);
+        req.io.to(orderId).emit("liveTrackingUpdate", order);
 
-        return res.send(order);
+        return res.json(order);
 
 
     } catch (error) {
-        return res.status(500).send({ message: "Failed to update order" });
+        return res.status(500).json({ message: "Failed to update order" });
     }
 }
 
@@ -148,17 +148,19 @@ export const getOrders = async (req, res) => {
 
         if (deliveryPartnerId) {
             query.deliveryPartner = deliveryPartnerId;
-            query.branch = branchId;
+            if (branchId) {  // ✅ Fixed: Only add branch if provided
+                query.branch = branchId;
+            }
         }
 
         const orders = await Order.find(query).populate(
             "customer branch items.item deliveryPartner"
         );
 
-        return res.send(orders);
+        return res.json(orders);
 
     } catch (error) {
-        return res.status(500).send({ message: "Failed to fetch order", error });
+        return res.status(500).json({ message: "Failed to fetch order", error });
     }
 }
 
@@ -170,12 +172,12 @@ export const getOrderById = async (req, res) => {
         );
 
         if (!order) {
-            return res.status(404).send({ message: "Order not found" });
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        return res.send(order);
+        return res.json(order);
 
     } catch (error) {
-        return res.status(500).send({ message: "Failed to fetch order", error });
+        return res.status(500).json({ message: "Failed to fetch order", error });
     }
 } 
